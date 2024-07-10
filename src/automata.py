@@ -1,4 +1,4 @@
-from typing import Dict, List, Set, Tuple
+from typing import Dict, Set, Tuple
 
 def load_automata(filename: str) -> tuple:
 
@@ -54,39 +54,38 @@ def load_automata(filename: str) -> tuple:
     except ValueError as e:
         raise ValueError(f"Erro na leitura do arquivo: {e}")
 
-def process(automata, word: list[str]) -> Dict[str, str]:
+def process(automata, word: str) -> Dict[str, str]:
 
     states, alphabet, transitions, initial_state, final_states = automata
 
     results = {}
-    for word_to_check in word:
-        # Verificar se a palavra contém símbolos inválidos
-        for symbol in word_to_check:
-            if symbol not in alphabet:
-                results[word_to_check] = "INVALIDA"
-                break
-        else:
-            # Se a palavra for válida, simular o autômato
-            current_state = initial_state
-            # Caso a palavra seja vazia, verifica o estado inicial
-            if word_to_check == '&':
-                if current_state in final_states:
-                    results[word_to_check] = "ACEITA"
-                else:
-                    results[word_to_check] = "REJEITA"
+    # Verificar se a palavra contém símbolos inválidos
+    for symbol in word:
+        if symbol not in alphabet:
+            results[word] = "INVALIDA"
+            break
+    else:
+        # Se a palavra for válida, simular o autômato
+        current_state = initial_state
+        # Caso a palavra seja vazia, verifica o estado inicial
+        if not word:
+            if current_state in final_states:
+                results[word] = "ACEITA"
             else:
-                for symbol in word_to_check:
-                    if (current_state, symbol) in transitions:
-                        current_state = transitions[(current_state, symbol)][0]  # Assumindo que delta é uma função determinista
-                    else:
-                        results[word_to_check] = "REJEITA"
-                        break
+                results[word] = "REJEITA"
+        else:
+            for symbol in word:
+                if (current_state, symbol) in transitions:
+                    current_state = transitions[(current_state, symbol)][0]  # Assumindo que delta é uma função determinista
                 else:
-                    # Se o autômato chegou a um estado final, a palavra é aceita
-                    if current_state in final_states:
-                        results[word_to_check] = "ACEITA"
-                    else:
-                        results[word_to_check] = "REJEITA"
+                    results[word] = "REJEITA"
+                    break
+            else:
+                # Se o autômato chegou a um estado final, a palavra é aceita
+                if current_state in final_states:
+                    results[word] = "ACEITA"
+                else:
+                    results[word] = "REJEITA"
 
     return results
 
@@ -116,20 +115,25 @@ def convert_to_dfa(automata) -> tuple:
             for state in current_state:
                 if (state, symbol) in transitions:
                     next_state.update(transitions[(state, symbol)])
+
+            # Corrigido aqui: Converter next_state para tupla de tuplas
+            next_state = tuple(tuple(s) for s in next_state)
+
             # Adicionar a transição ao DFA
             if next_state:
                 # Adicionar o estado de destino à fila se ele não estiver na fila
                 if next_state not in dfa_states:
-                    queue.append(tuple(next_state))
-                dfa_transitions[(tuple(current_state), symbol)] = tuple(next_state)
+                    queue.append(next_state)
+                dfa_transitions[(tuple(map(tuple, current_state)), symbol)] = next_state
             else:
                 # Adicionar uma transição para um estado vazio se não houver transição para o símbolo atual
-                dfa_transitions[(tuple(current_state), symbol)] = tuple()
+                dfa_transitions[(tuple(map(tuple, current_state)), symbol)] = tuple()
 
     # Converter o conjunto de estados finais do DFA
     dfa_final_states = set()
+    # Corrigido aqui: Verificar se o estado final é exatamente ('q0', )
     for state in dfa_states:
-        if any(s in final_states for s in state):
+        if state == ('q0',):  
             dfa_final_states.add(state)
 
     # Retornar o DFA
